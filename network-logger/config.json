@@ -1,0 +1,11 @@
+{
+  "log_file": "security.log",
+  "max_log_size": 1048576,
+  "backup_count": 3,
+  "alert_email": "admin@example.com",
+  "smtp_server": "smtp.gmail.com",
+  "smtp_port": 465,
+  "smtp_user": "your_email@gmail.com",
+  "smtp_password": "your_app_password",
+  "scan_ports": [22, 80, 443, 8080]
+}

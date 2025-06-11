@@ -1,0 +1,1 @@
+Modular set of command-line tools designed for everyday tasks in offensive and defensive cybersecurity. It includes scanners, log analyzers, packet tools, and automation helpers — all written in Python and Bash.

@@ -1,31 +1,49 @@
-import hashlib
 import sqlite3
+import bcrypt
+from datetime import datetime
 
 class Auth:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path):
         self.db_path = db_path
-        self._init_db()
+        self._setup()
 
-    def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password_hash TEXT NOT NULL)')
-        conn.commit()
-        conn.close()
+    def _setup(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    username TEXT PRIMARY KEY,
+                    password_hash BLOB NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    last_login TEXT
+                )
+            """)
 
-    def add_user(self, username: str, password: str):
-        pw_hash = hashlib.sha256(password.encode()).hexdigest()
-        conn = sqlite3.connect(self.db_path)
+    def add_user(self, username, password):
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
         try:
-            conn.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', (username, pw_hash))
-            conn.commit()
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                    (username, hashed)
+                )
+            return True
         except sqlite3.IntegrityError:
-            pass
-        conn.close()
+            return False
 
-    def verify_user(self, username: str, password: str) -> bool:
-        pw_hash = hashlib.sha256(password.encode()).hexdigest()
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.execute('SELECT password_hash FROM users WHERE username=?', (username,))
-        row = cur.fetchone()
-        conn.close()
-        return row is not None and row[0] == pw_hash
+    def verify_user(self, username, password):
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                'SELECT password_hash FROM users WHERE username = ?',
+                (username,)
+            ).fetchone()
+
+            if not row:
+                return False
+            
+            if bcrypt.checkpw(password.encode(), row[0]):
+                conn.execute(
+                    'UPDATE users SET last_login = ? WHERE username = ?',
+                    (datetime.utcnow().isoformat(), username)
+                )
+                return True
+        return False 
